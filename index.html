@@ -1,17 +1,44 @@
 <!DOCTYPE html>
+<!-- 今日热搜 · 首页（F1 热搜列表） -->
+<!-- Day 2 占位页原位重写 · Day 7 —— 结构依据 PRD 第五节 + TECH_DESIGN 第二节 -->
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>今日热搜</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
+
+  <!-- 顶部：网站名 + 数据更新时间（PRD F1 要求） -->
+  <header class="site-header">
     <h1>今日热搜</h1>
-    <p>占位页 · Day 2 建立 · Day 7 开发 MVP</p>
+    <p class="update-time">演示数据 · 更新于 2026-09-22</p>
   </header>
+
   <main>
-    <p>这里以后会展示每天的热搜榜单。</p>
+    <!-- 我的收藏（F3）：默认隐藏，main.js 检测到收藏后显示并填充 -->
+    <section id="favorites-area" class="favorites-area hidden" aria-label="我的收藏">
+      <h2>我的收藏</h2>
+      <ul id="favorites-list" class="hot-list"></ul>
+      <p id="favorites-empty-tip" class="empty-tip hidden">还没有收藏，点开任意一条热搜，在详情页点「收藏」试试。</p>
+    </section>
+
+    <!-- 今日榜单（F1）：main.js 按「分类」分块渲染，每条含标题/来源/热度 -->
+    <section id="hot-list-area" aria-label="今日榜单">
+      <h2>今日榜单</h2>
+      <div id="hot-list">
+        <p class="loading-tip">数据加载中……</p>
+      </div>
+    </section>
   </main>
+
+  <footer class="site-footer">
+    <p>今日热搜 · 省流版演示 —— MVP 演示数据，非实时抓取</p>
+  </footer>
+
+  <!-- 脚本顺序：先数据后逻辑（main.js 要读 data.js 的 HOT_LIST） -->
+  <script src="data.js"></script>
+  <script src="main.js"></script>
 </body>
 </html>

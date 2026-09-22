@@ -1,0 +1,242 @@
+/* ============================================================
+   style.css —— 今日热搜 · 两页共用样式（Day 7）
+   依据：PRD 第五节「交互总原则」——浏览器原生行为、不做复杂动画；
+        手机打开不乱版即可（响应式不作为本期验收项）。
+   类名与 index.html / detail.html 骨架一一对应，
+   main.js 渲染时生成的元素也只用本文件里已定义的类。
+   ============================================================ */
+
+/* ---------- 基础 ---------- */
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+  background: #f6f7f9;
+  color: #222;
+  line-height: 1.6;
+}
+
+.hidden { display: none !important; }
+
+/* 页面内容统一宽度，手机上自动缩 */
+main, .site-header, .site-footer {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+/* ---------- 顶部 ---------- */
+.site-header {
+  padding-top: 24px;
+  padding-bottom: 8px;
+}
+
+.site-header h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.update-time {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #888;
+}
+
+/* 详情页顶部：返回链接在站名上方 */
+.back-link {
+  display: inline-block;
+  font-size: 14px;
+  color: #3366cc;
+  text-decoration: none;
+  margin-bottom: 8px;
+}
+
+.back-link:hover { text-decoration: underline; }
+
+/* ---------- 列表区（F1） ---------- */
+section h2 {
+  font-size: 18px;
+  margin: 24px 0 12px;
+}
+
+/* 分类块：main.js 每个分类生成一个 */
+.category-block {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.category-block h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: #c0392b; /* 红色小标题，呼应「热搜」的火气 */
+}
+
+.hot-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* 一条热搜一行：标题 + 来源 + 热度 */
+.hot-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 4px;
+  border-bottom: 1px dashed #eee;
+}
+
+.hot-item:last-child { border-bottom: none; }
+
+.item-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #222;
+  text-decoration: none;
+  font-size: 15px;
+}
+
+.item-title:hover { color: #c0392b; }
+
+.item-source {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: #999;
+}
+
+.item-heat {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: #e67e22;
+  font-weight: bold;
+}
+
+/* 空态与加载态 */
+.empty-tip, .loading-tip {
+  color: #999;
+  font-size: 14px;
+  padding: 12px 4px;
+}
+
+/* ---------- 我的收藏（F3） ---------- */
+.favorites-area {
+  background: #fffbe9;
+  border: 1px solid #f5e6a8;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-top: 8px;
+}
+
+.favorites-area h2 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: #8a6d00;
+}
+
+/* ---------- 详情页（F2） ---------- */
+.detail-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.detail-title {
+  margin: 0 0 12px;
+  font-size: 22px;
+  line-height: 1.4;
+}
+
+/* 元信息行：来源 / 分类 / 热度 三个小标签 */
+.detail-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.meta-tag {
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  background: #f0f2f5;
+  color: #666;
+}
+
+.meta-tag.heat {
+  background: #fdebd0;
+  color: #b9540a;
+  font-weight: bold;
+}
+
+.detail-summary {
+  font-size: 15px;
+  color: #333;
+  border-top: 1px solid #eee;
+  padding-top: 14px;
+}
+
+/* ---------- 操作区：收藏按钮 + 原文链接 ---------- */
+.detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.fav-btn {
+  font-size: 15px;
+  padding: 8px 20px;
+  border-radius: 6px;
+  border: 1px solid #c0392b;
+  background: #fff;
+  color: #c0392b;
+  cursor: pointer;
+}
+
+.fav-btn:hover { background: #fdf0ee; }
+
+/* 已收藏（点亮态）：按钮状态变化，PRD F3 的可观察结果 */
+.fav-btn.active {
+  background: #c0392b;
+  color: #fff;
+}
+
+.source-link {
+  font-size: 15px;
+  color: #3366cc;
+  text-decoration: none;
+}
+
+.source-link:hover { text-decoration: underline; }
+
+/* 收藏不可用的降级提示（PRD 第七节异常 3） */
+.fav-tip {
+  font-size: 13px;
+  color: #b9540a;
+}
+
+/* ---------- 页脚 ---------- */
+.site-footer {
+  padding-top: 24px;
+  padding-bottom: 32px;
+  font-size: 12px;
+  color: #aaa;
+  text-align: center;
+}
+
+/* ---------- 手机不乱版 ---------- */
+@media (max-width: 480px) {
+  .site-header h1 { font-size: 22px; }
+  .detail-title { font-size: 18px; }
+  .hot-item { gap: 6px; }
+}

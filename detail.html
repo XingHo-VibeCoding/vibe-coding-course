@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<!-- 今日热搜 · 详情页（F2 单条详情） -->
+<!-- Day 7 新建 —— 结构依据 PRD 第五节 + TECH_DESIGN 第二节 -->
+<!-- 用法：main.js 从网址参数读 id（形如 detail.html?id=3），再把 data.js 里对应那条的 6 个字段填进来 -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>热搜详情 · 今日热搜</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- 顶部：返回列表入口（PRD F2 要求，点了回首页） -->
+  <header class="site-header detail-header">
+    <a class="back-link" href="index.html">&larr; 返回列表</a>
+    <h1>今日热搜</h1>
+  </header>
+
+  <main>
+    <!-- 详情卡片：6 个展示字段的占位容器，main.js 按 id 填充 -->
+    <article id="detail-card" class="detail-card">
+      <p class="loading-tip">详情加载中……</p>
+    </article>
+
+    <!-- 操作区：收藏按钮（F3）+ 查看原文链接 -->
+    <div class="detail-actions">
+      <button id="fav-btn" class="fav-btn" type="button">☆ 收藏</button>
+      <a id="source-link" class="source-link" href="#" target="_blank" rel="noopener noreferrer">查看原文 ↗</a>
+      <span id="fav-tip" class="fav-tip hidden" role="alert">收藏不可用（浏览器禁用了本地存储）</span>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>今日热搜 · 省流版演示 —— MVP 演示数据，非实时抓取</p>
+  </footer>
+
+  <!-- 脚本顺序与首页一致：先数据后逻辑 -->
+  <script src="data.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
