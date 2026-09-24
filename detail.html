@@ -35,8 +35,9 @@
     <p>今日热搜 · 省流版演示 —— MVP 演示数据，非实时抓取</p>
   </footer>
 
-  <!-- 脚本顺序与首页一致：先数据后逻辑 -->
+  <!-- 脚本顺序与首页一致：数据 → 组件 → 逻辑（详情页热度用 components.js 的 heatToFire） -->
   <script src="data.js"></script>
+  <script src="components.js"></script>
   <script src="main.js"></script>
 </body>
 </html>

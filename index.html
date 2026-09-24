@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <!-- 今日热搜 · 首页（F1 热搜列表） -->
 <!-- Day 2 占位页原位重写 · Day 7 —— 结构依据 PRD 第五节 + TECH_DESIGN 第二节 -->
+<!-- Day 8 改版：三栏网格布局 + 四种页面状态（加载中/成功/空/错误） -->
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -13,10 +14,15 @@
   <!-- 顶部：网站名 + 数据更新时间（PRD F1 要求） -->
   <header class="site-header">
     <h1>今日热搜</h1>
-    <p class="update-time">演示数据 · 更新于 2026-09-22</p>
+    <p class="update-time">演示数据 · 更新于 2026-09-24</p>
   </header>
 
   <main>
+    <!-- 状态演示开关（Day 8，演示辅助非产品功能）：main.js 生成 4 个按钮 -->
+    <div id="state-switch" class="state-switch" aria-label="页面状态演示开关">
+      <span class="switch-label">状态演示：</span>
+    </div>
+
     <!-- 我的收藏（F3）：默认隐藏，main.js 检测到收藏后显示并填充 -->
     <section id="favorites-area" class="favorites-area hidden" aria-label="我的收藏">
       <h2>我的收藏</h2>
@@ -24,7 +30,7 @@
       <p id="favorites-empty-tip" class="empty-tip hidden">还没有收藏，点开任意一条热搜，在详情页点「收藏」试试。</p>
     </section>
 
-    <!-- 今日榜单（F1）：main.js 按「分类」分块渲染，每条含标题/来源/热度 -->
+    <!-- 今日榜单（F1）：main.js 按状态机渲染（加载中 → 成功三栏 / 空 / 错误） -->
     <section id="hot-list-area" aria-label="今日榜单">
       <h2>今日榜单</h2>
       <div id="hot-list">
@@ -37,8 +43,9 @@
     <p>今日热搜 · 省流版演示 —— MVP 演示数据，非实时抓取</p>
   </footer>
 
-  <!-- 脚本顺序：先数据后逻辑（main.js 要读 data.js 的 HOT_LIST） -->
+  <!-- 脚本顺序：数据 → 组件 → 逻辑（main.js 要读 data.js 的数据、调 components.js 的组件） -->
   <script src="data.js"></script>
+  <script src="components.js"></script>
   <script src="main.js"></script>
 </body>
 </html>

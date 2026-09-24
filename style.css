@@ -1,7 +1,7 @@
 /* ============================================================
-   style.css —— 今日热搜 · 两页共用样式（Day 7）
-   依据：PRD 第五节「交互总原则」——浏览器原生行为、不做复杂动画；
-        手机打开不乱版即可（响应式不作为本期验收项）。
+   style.css —— 今日热搜 · 两页共用样式（Day 7 初版，Day 8 改版）
+   Day 8 依据：用户提示词（方案甲）——桌面三栏并排、序号在前、
+   热度在右、手机宽度纵向堆叠不溢出；补全四态（加载/成功/空/错误）。
    类名与 index.html / detail.html 骨架一一对应，
    main.js 渲染时生成的元素也只用本文件里已定义的类。
    ============================================================ */
@@ -19,9 +19,10 @@ body {
 
 .hidden { display: none !important; }
 
-/* 页面内容统一宽度，手机上自动缩 */
+/* 页面内容统一宽度（Day 8 起三栏需要更宽的画布），
+   详情页的卡片和操作区单独限宽 720px 居中，观感不变 */
 main, .site-header, .site-footer {
-  max-width: 720px;
+  max-width: 1080px;
   margin-left: auto;
   margin-right: auto;
   padding-left: 16px;
@@ -56,10 +57,50 @@ main, .site-header, .site-footer {
 
 .back-link:hover { text-decoration: underline; }
 
-/* ---------- 列表区（F1） ---------- */
+/* ---------- 状态演示开关（Day 8，演示辅助，非产品功能） ---------- */
+.state-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0 4px;
+}
+
+.state-switch .switch-label {
+  font-size: 12px;
+  color: #999;
+}
+
+.state-switch button {
+  font-size: 12px;
+  padding: 3px 12px;
+  border-radius: 12px;
+  border: 1px solid #d5d8dd;
+  background: #fff;
+  color: #666;
+  cursor: pointer;
+}
+
+.state-switch button:hover { border-color: #3366cc; color: #3366cc; }
+
+.state-switch button.active {
+  background: #3366cc;
+  border-color: #3366cc;
+  color: #fff;
+}
+
+/* ---------- 列表区（F1）· Day 8 三栏网格 ---------- */
 section h2 {
   font-size: 18px;
   margin: 24px 0 12px;
+}
+
+/* 桌面：三个分类块并排；手机（<768px）：纵向堆叠 */
+#hot-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  align-items: start;
 }
 
 /* 分类块：main.js 每个分类生成一个 */
@@ -68,7 +109,6 @@ section h2 {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   padding: 12px 16px;
-  margin-bottom: 16px;
 }
 
 .category-block h3 {
@@ -83,21 +123,42 @@ section h2 {
   padding: 0;
 }
 
-/* 一条热搜一行：标题 + 来源 + 热度 */
+/* 一条热搜一行：序号在前 → 标题 → 来源 → 热度靠右 */
 .hot-item {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
   padding: 8px 4px;
   border-bottom: 1px dashed #eee;
 }
 
 .hot-item:last-child { border-bottom: none; }
 
+/* 序号圆角标（main.js 生成；前三名高亮） */
+.item-rank {
+  flex: 0 0 auto;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 6px;
+  background: #f0f2f5;
+  color: #666;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-rank.top {
+  background: #c0392b;
+  color: #fff;
+  font-weight: bold;
+}
+
 .item-title {
   flex: 1 1 auto;
-  min-width: 0;
+  min-width: 0;              /* 关键：允许收缩，手机上长标题换行而不是溢出 */
+  overflow-wrap: anywhere;
   color: #222;
   text-decoration: none;
   font-size: 15px;
@@ -113,13 +174,61 @@ section h2 {
 
 .item-heat {
   flex: 0 0 auto;
+  margin-left: auto;         /* 热度始终顶到最右 */
   font-size: 12px;
   color: #e67e22;
   font-weight: bold;
 }
 
-/* 空态与加载态 */
-.empty-tip, .loading-tip {
+/* ---------- 四态（Day 8 核心学习点） ---------- */
+
+/* 状态盒子通栏占满网格（不出现在某一栏里） */
+.state-box {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 32px 16px;
+}
+
+/* 1) 加载中：转圈 + 文案 */
+.loading-box { color: #999; font-size: 14px; }
+
+.loading-spinner {
+  display: inline-block;
+  width: 26px;
+  height: 26px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3366cc;
+  border-radius: 50%;
+  margin-bottom: 10px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 2) 空：空列表提示 */
+.empty-box { color: #999; font-size: 14px; }
+
+/* 3) 错误：红字提示 + 重试按钮 */
+.error-box { color: #a32d2d; font-size: 14px; }
+
+.retry-btn {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 14px;
+  padding: 6px 24px;
+  border-radius: 6px;
+  border: 1px solid #3366cc;
+  background: #fff;
+  color: #3366cc;
+  cursor: pointer;
+}
+
+.retry-btn:hover { background: #eef4fc; }
+
+/* 分类内的空态（某分类没数据，原有的兜底） */
+.empty-tip {
   color: #999;
   font-size: 14px;
   padding: 12px 4px;
@@ -140,7 +249,14 @@ section h2 {
   color: #8a6d00;
 }
 
-/* ---------- 详情页（F2） ---------- */
+/* ---------- 详情页（F2，Day 8 不改） ---------- */
+.detail-card,
+.detail-actions {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .detail-card {
   background: #fff;
   border: 1px solid #e5e7eb;
@@ -234,9 +350,16 @@ section h2 {
   text-align: center;
 }
 
-/* ---------- 手机不乱版 ---------- */
+/* ---------- 手机适配（Day 8：<768px 三栏改堆叠） ---------- */
+@media (max-width: 767px) {
+  #hot-list { grid-template-columns: 1fr; }
+
+  .state-box { padding: 24px 8px; }
+}
+
 @media (max-width: 480px) {
   .site-header h1 { font-size: 22px; }
   .detail-title { font-size: 18px; }
   .hot-item { gap: 6px; }
+  .item-title { font-size: 14px; }
 }

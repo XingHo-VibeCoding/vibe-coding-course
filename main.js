@@ -1,19 +1,35 @@
 // ============================================================
-// main.js —— 今日热搜 · 逻辑层（Day 7）
-// 依据：TECH_DESIGN 第三/五/六节（数据模型、数据流、错误处理）
-// 职责：
-//   1) 首页（index.html）：读 data.js 的 HOT_LIST，按分类分块、
-//      每类按热度降序渲染列表（F1），并渲染「我的收藏」区（F3）
-//   2) 详情页（detail.html）：从网址参数读 id，填 6 个展示字段（F2），
-//      绑定收藏按钮（F3）
-//   3) 收藏读写 localStorage（键名 favorites，值为 id 数组），
-//      读写都包 try/catch，禁用存储时降级为「收藏不可用」
+// main.js —— 今日热搜 · 逻辑层（Day 7 初版，Day 8 改版）
+// 依据：TECH_DESIGN 第三/五/六节 + Day 8 拍板（方案甲）
+// Day 8 新增：
+//   1) 首页状态机：加载中 → 成功（setTimeout 模拟网络延迟），
+//      并支持 空 / 错误 两种状态的展示与恢复
+//   2) 网址参数 ?state=loading|empty|error 直达对应状态（演示辅助）
+//   3) 列表项新增序号（前三名高亮），热度仍靠右
+//   4) 错误态带「重试」按钮，点击回到成功态
+// Day 8 加练：单条卡片与列表的 DOM 生成抽到 components.js
+//   （createHotCard / createCardList），本文件只管「什么时候渲染什么」
 // 判断当前是哪个页面：看页面上有没有 #hot-list（首页的标志容器）
 // ============================================================
 
 "use strict";
 
-// ---------- 收藏：localStorage 读写（F3） ----------
+// ---------- Day 8：状态配置（演示辅助，非产品功能） ----------
+
+// 模拟网络延迟（毫秒）：正常进入页面时先加载中一小会儿再出数据
+var FAKE_DELAY = 600;
+
+// 合法的演示状态名
+var DEMO_STATES = ["normal", "loading", "empty", "error"];
+
+// 从网址参数读演示状态：?state=loading / empty / error（缺省 normal）
+function getDemoState() {
+  var params = new URLSearchParams(window.location.search);
+  var s = params.get("state");
+  return DEMO_STATES.indexOf(s) !== -1 ? s : "normal";
+}
+
+// ---------- 收藏：localStorage 读写（F3，Day 7 原有） ----------
 
 var FAV_KEY = "favorites";
 
@@ -24,7 +40,6 @@ function getFavorites() {
     if (raw === null) return [];
     var arr = JSON.parse(raw);
     if (!Array.isArray(arr)) return [];
-    // 只保留合法数字 id
     return arr.filter(function (x) { return typeof x === "number"; });
   } catch (e) {
     return null;
@@ -41,48 +56,92 @@ function saveFavorites(list) {
   }
 }
 
-// ---------- 工具：按热度生成火焰标识（PRD 允许的两种热度展示之一） ----------
+// ---------- Day 8：四态盒子工厂（三种非成功态共用一套做法） ----------
 
-function heatToFire(heat) {
-  if (heat >= 8000000) return "🔥🔥🔥";
-  if (heat >= 6000000) return "🔥🔥";
-  return "🔥";
+// 生成一个通栏状态盒子（CSS 里 .state-box 是 grid-column: 1/-1）
+function buildStateBox(type) {
+  var box = document.createElement("div");
+  box.className = "state-box";
+
+  if (type === "loading") {
+    box.className += " loading-box";
+    var spin = document.createElement("div");
+    spin.className = "loading-spinner";
+    box.appendChild(spin);
+    var t1 = document.createElement("p");
+    t1.textContent = "正在加载今日热搜……";
+    box.appendChild(t1);
+  } else if (type === "empty") {
+    box.className += " empty-box";
+    var t2 = document.createElement("p");
+    t2.textContent = "今天还没有热搜内容，稍后再来看看。";
+    box.appendChild(t2);
+  } else if (type === "error") {
+    box.className += " error-box";
+    var t3 = document.createElement("p");
+    t3.textContent = "加载失败，请检查网络后重试。";
+    box.appendChild(t3);
+    var btn = document.createElement("button");
+    btn.className = "retry-btn";
+    btn.type = "button";
+    btn.textContent = "重试";
+    btn.addEventListener("click", function () {
+      // 重试 = 回到成功态（真实项目里这里会重新发请求）
+      renderHotListSuccess();
+    });
+    box.appendChild(btn);
+  }
+
+  return box;
 }
 
-// ---------- 工具：生成一条列表项的 DOM（首页列表和收藏区共用） ----------
+// ---------- Day 8：状态开关（页面顶部的演示辅助按钮行） ----------
 
-function buildHotItem(item) {
-  var li = document.createElement("li");
-  li.className = "hot-item";
+function setupStateSwitch() {
+  var switchBox = document.getElementById("state-switch");
+  if (!switchBox) return;
 
-  // 标题：整条可点，跳详情页（id 走网址参数）
-  var a = document.createElement("a");
-  a.className = "item-title";
-  a.href = "detail.html?id=" + encodeURIComponent(item.id);
-  a.textContent = item.title;
-  li.appendChild(a);
+  var labels = {
+    normal: "正常",
+    loading: "加载中",
+    empty: "空",
+    error: "错误"
+  };
 
-  // 来源
-  var src = document.createElement("span");
-  src.className = "item-source";
-  src.textContent = item.source;
-  li.appendChild(src);
-
-  // 热度（火焰标识）
-  var heat = document.createElement("span");
-  heat.className = "item-heat";
-  heat.textContent = heatToFire(item.heat);
-  heat.title = "热度 " + item.heat; // 鼠标悬停可看具体数字
-  li.appendChild(heat);
-
-  return li;
+  DEMO_STATES.forEach(function (name) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.dataset.state = name;
+    btn.textContent = labels[name];
+    if (name === "normal") btn.classList.add("active");
+    btn.addEventListener("click", function () {
+      // 点击即切换到对应状态（改网址参数并重新走渲染流程）
+      window.location.search = name === "normal" ? "" : "?state=" + name;
+    });
+    switchBox.appendChild(btn);
+  });
 }
 
-// ---------- 首页逻辑（F1 列表 + F3 收藏区） ----------
+// 同步开关按钮的高亮（当前是哪个状态，哪个按钮亮）
+function syncStateSwitch(current) {
+  var switchBox = document.getElementById("state-switch");
+  if (!switchBox) return;
+  var buttons = switchBox.querySelectorAll("button");
+  for (var i = 0; i < buttons.length; i++) {
+    if (buttons[i].dataset.state === current) {
+      buttons[i].classList.add("active");
+    } else {
+      buttons[i].classList.remove("active");
+    }
+  }
+}
 
-function renderIndexPage() {
-  // 1) 渲染今日榜单：按分类分块，每类按热度降序
+// ---------- 首页逻辑（Day 8 状态机版） ----------
+
+// 成功态：渲染三栏分类列表（原 Day 7 逻辑，加序号）
+function renderHotListSuccess() {
   var listRoot = document.getElementById("hot-list");
+  if (!listRoot) return;
   listRoot.innerHTML = "";
 
   // 按分类归堆（保持数据里首次出现的顺序）
@@ -97,11 +156,8 @@ function renderIndexPage() {
   });
 
   if (order.length === 0) {
-    // 异常 1：数据为空 → 兜底文案，不白屏（PRD 第七节）
-    var tip = document.createElement("p");
-    tip.className = "empty-tip";
-    tip.textContent = "今日暂无内容";
-    listRoot.appendChild(tip);
+    // 全列表为空 → 空态兜底，不白屏（PRD 第七节）
+    listRoot.appendChild(buildStateBox("empty"));
     return;
   }
 
@@ -115,24 +171,61 @@ function renderIndexPage() {
     h3.textContent = cat;
     block.appendChild(h3);
 
-    var ul = document.createElement("ul");
-    ul.className = "hot-list";
-
     if (items.length === 0) {
+      // 分类内空态（原有兜底）
       var empty = document.createElement("p");
       empty.className = "empty-tip";
       empty.textContent = "本分类暂无内容";
       block.appendChild(empty);
     } else {
-      items.forEach(function (item) { ul.appendChild(buildHotItem(item)); });
-      block.appendChild(ul);
+      // 榜单列表：组件带排名（1..n，前三高亮）
+      block.appendChild(createCardList(items, { ranked: true }));
     }
 
     listRoot.appendChild(block);
   });
 
-  // 2) 渲染「我的收藏」区
+  // 渲染「我的收藏」区（成功态才有意义）
   renderFavoritesArea();
+}
+
+function renderIndexPage() {
+  var listRoot = document.getElementById("hot-list");
+  if (!listRoot) return;
+
+  setupStateSwitch();
+
+  var demo = getDemoState();
+  syncStateSwitch(demo);
+
+  if (demo === "error") {
+    // 错误态：直接显示错误盒子（带重试）
+    listRoot.innerHTML = "";
+    listRoot.appendChild(buildStateBox("error"));
+    return;
+  }
+
+  if (demo === "empty") {
+    // 空态：显示空盒子
+    listRoot.innerHTML = "";
+    listRoot.appendChild(buildStateBox("empty"));
+    return;
+  }
+
+  if (demo === "loading") {
+    // 加载态（?state=loading 直达）：一直转圈不落数据，方便看效果
+    listRoot.innerHTML = "";
+    listRoot.appendChild(buildStateBox("loading"));
+    return;
+  }
+
+  // normal：先加载中 → 模拟延迟后渲染成功（真实项目里延迟=等服务器返回）
+  listRoot.innerHTML = "";
+  listRoot.appendChild(buildStateBox("loading"));
+
+  window.setTimeout(function () {
+    renderHotListSuccess();
+  }, FAKE_DELAY);
 }
 
 function renderFavoritesArea() {
@@ -143,18 +236,15 @@ function renderFavoritesArea() {
 
   var favIds = getFavorites();
   if (favIds === null) {
-    // localStorage 不可用：收藏区整体不显示，首页其他功能不受影响
     area.classList.add("hidden");
     return;
   }
 
-  // 从演示数据里挑出已收藏的条目
   var favItems = HOT_LIST.filter(function (item) {
     return favIds.indexOf(item.id) !== -1;
   });
 
   if (favItems.length === 0) {
-    // 无收藏：显示提示文案（PRD 允许的两种处理选了「显示提示」）
     area.classList.remove("hidden");
     ul.innerHTML = "";
     emptyTip.classList.remove("hidden");
@@ -164,10 +254,11 @@ function renderFavoritesArea() {
   area.classList.remove("hidden");
   emptyTip.classList.add("hidden");
   ul.innerHTML = "";
-  favItems.forEach(function (item) { ul.appendChild(buildHotItem(item)); });
+  // 收藏区条目不带排名：同一个 HotCard 组件，不传 rank 即可
+  favItems.forEach(function (item) { ul.appendChild(createHotCard(item)); });
 }
 
-// ---------- 详情页逻辑（F2 六字段 + F3 收藏按钮） ----------
+// ---------- 详情页逻辑（F2，Day 8 不改） ----------
 
 function renderDetailPage() {
   var card = document.getElementById("detail-card");
@@ -175,7 +266,6 @@ function renderDetailPage() {
   var sourceLink = document.getElementById("source-link");
   var favTip = document.getElementById("fav-tip");
 
-  // 1) 从网址参数读 id：detail.html?id=3
   var params = new URLSearchParams(window.location.search);
   var rawId = params.get("id");
   var id = rawId === null ? NaN : Number(rawId);
@@ -183,7 +273,6 @@ function renderDetailPage() {
   var item = HOT_LIST.find(function (x) { return x.id === id; });
 
   if (!item) {
-    // id 缺失/非法/找不到 → 兜底文案，不白屏
     card.innerHTML = "";
     var bad = document.createElement("p");
     bad.className = "empty-tip";
@@ -194,12 +283,11 @@ function renderDetailPage() {
     return;
   }
 
-  // 2) 填 6 个展示字段（PRD F2）
   card.innerHTML = "";
 
   var h2 = document.createElement("h2");
   h2.className = "detail-title";
-  h2.textContent = item.title;            // ① 标题
+  h2.textContent = item.title;
   card.appendChild(h2);
 
   var meta = document.createElement("div");
@@ -207,37 +295,34 @@ function renderDetailPage() {
 
   var tagSource = document.createElement("span");
   tagSource.className = "meta-tag";
-  tagSource.textContent = "来源：" + item.source;   // ② 来源平台
+  tagSource.textContent = "来源：" + item.source;
   meta.appendChild(tagSource);
 
   var tagCat = document.createElement("span");
   tagCat.className = "meta-tag";
-  tagCat.textContent = "分类：" + item.category;    // ③ 分类
+  tagCat.textContent = "分类：" + item.category;
   meta.appendChild(tagCat);
 
   var tagHeat = document.createElement("span");
   tagHeat.className = "meta-tag heat";
-  tagHeat.textContent = heatToFire(item.heat) + " 热度 " + item.heat.toLocaleString(); // ④ 热度
+  tagHeat.textContent = heatToFire(item.heat) + " 热度 " + item.heat.toLocaleString();
   meta.appendChild(tagHeat);
 
   card.appendChild(meta);
 
   var p = document.createElement("p");
   p.className = "detail-summary";
-  p.textContent = item.summary;           // ⑤ 摘要说明
+  p.textContent = item.summary;
   card.appendChild(p);
 
-  // ⑥ 原文链接：填进操作区的「查看原文」
   sourceLink.href = item.link;
 
-  // 3) 收藏按钮（F3）：点亮态 + 切换
   favBtn.dataset.id = String(item.id);
 
   var favIds = getFavorites();
   var storageOk = favIds !== null;
 
   if (!storageOk) {
-    // 异常 3：浏览器禁用本地存储 → 按钮置灰不可点 + 降级提示
     favBtn.disabled = true;
     favBtn.textContent = "☆ 收藏";
     favTip.classList.remove("hidden");
@@ -255,9 +340,9 @@ function renderDetailPage() {
     var itemId = Number(favBtn.dataset.id);
     var pos = current.indexOf(itemId);
     if (pos === -1) {
-      current.push(itemId);           // 收藏
+      current.push(itemId);
     } else {
-      current.splice(pos, 1);         // 取消收藏
+      current.splice(pos, 1);
     }
     if (saveFavorites(current)) {
       updateFavBtn(favBtn, pos === -1);
