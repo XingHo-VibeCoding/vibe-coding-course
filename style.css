@@ -1,7 +1,9 @@
 /* ============================================================
-   style.css —— 今日热搜 · 两页共用样式（Day 7 初版，Day 8 改版）
+   style.css —— 今日热搜 · 两页共用样式（Day 7 初版，Day 8 改版，Day 9 修缮）
    Day 8 依据：用户提示词（方案甲）——桌面三栏并排、序号在前、
    热度在右、手机宽度纵向堆叠不溢出；补全四态（加载/成功/空/错误）。
+   Day 9 依据：设计规则审查（对比度/层级/间距/按钮状态/触控目标），
+   只调参数不加装饰，布局结构与类名一律未动，功能不受影响。
    类名与 index.html / detail.html 骨架一一对应，
    main.js 渲染时生成的元素也只用本文件里已定义的类。
    ============================================================ */
@@ -43,7 +45,7 @@ main, .site-header, .site-footer {
 .update-time {
   margin: 4px 0 0;
   font-size: 13px;
-  color: #888;
+  color: #666; /* Day 9：#888 对比度不足，加深到 AA 达标灰 */
 }
 
 /* 详情页顶部：返回链接在站名上方 */
@@ -63,12 +65,12 @@ main, .site-header, .site-footer {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  margin: 12px 0 4px;
+  margin: 8px 0 4px; /* Day 9：原 12px，统一节奏 */
 }
 
 .state-switch .switch-label {
   font-size: 12px;
-  color: #999;
+  color: #666; /* Day 9：#999 → #666，AA 达标 */
 }
 
 .state-switch button {
@@ -108,12 +110,13 @@ section h2 {
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  padding: 12px 16px;
+  padding: 16px; /* Day 9：原 12px 16px，统一到 8 的倍数节奏 */
 }
 
 .category-block h3 {
   margin: 0 0 8px;
-  font-size: 15px;
+  font-size: 16px;        /* Day 9：原 15px 与条目标题同大，层级拉不开 */
+  font-weight: 600;       /* Day 9：加字重，栏目边界扫读更清晰 */
   color: #c0392b; /* 红色小标题，呼应「热搜」的火气 */
 }
 
@@ -169,14 +172,14 @@ section h2 {
 .item-source {
   flex: 0 0 auto;
   font-size: 12px;
-  color: #999;
+  color: #767676; /* Day 9：#999 → #767676，白底 AA 达标 */
 }
 
 .item-heat {
   flex: 0 0 auto;
   margin-left: auto;         /* 热度始终顶到最右 */
   font-size: 12px;
-  color: #e67e22;
+  color: #b9540a; /* Day 9：#e67e22 对比不足，加深并与详情页热度标签同色 */
   font-weight: bold;
 }
 
@@ -190,7 +193,7 @@ section h2 {
 }
 
 /* 1) 加载中：转圈 + 文案 */
-.loading-box { color: #999; font-size: 14px; }
+.loading-box { color: #666; font-size: 14px; } /* Day 9：#999 → #666（灰底上也要达标） */
 
 .loading-spinner {
   display: inline-block;
@@ -208,14 +211,14 @@ section h2 {
 }
 
 /* 2) 空：空列表提示 */
-.empty-box { color: #999; font-size: 14px; }
+.empty-box { color: #666; font-size: 14px; } /* Day 9：#999 → #666 */
 
 /* 3) 错误：红字提示 + 重试按钮 */
 .error-box { color: #a32d2d; font-size: 14px; }
 
 .retry-btn {
   display: inline-block;
-  margin-top: 12px;
+  margin-top: 16px; /* Day 9：原 12px，统一节奏 */
   font-size: 14px;
   padding: 6px 24px;
   border-radius: 6px;
@@ -229,7 +232,7 @@ section h2 {
 
 /* 分类内的空态（某分类没数据，原有的兜底） */
 .empty-tip {
-  color: #999;
+  color: #666; /* Day 9：#999 → #666 */
   font-size: 14px;
   padding: 12px 4px;
 }
@@ -239,8 +242,8 @@ section h2 {
   background: #fffbe9;
   border: 1px solid #f5e6a8;
   border-radius: 8px;
-  padding: 12px 16px;
-  margin-top: 8px;
+  padding: 16px;        /* Day 9：原 12px 16px，统一节奏 */
+  margin-top: 16px;     /* Day 9：原 8px，与上方内容贴太近，统一到 16 */
 }
 
 .favorites-area h2 {
@@ -261,7 +264,7 @@ section h2 {
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  padding: 20px;
+  padding: 16px; /* Day 9：原 20px，统一节奏 */
   margin-top: 16px;
 }
 
@@ -297,7 +300,7 @@ section h2 {
   font-size: 15px;
   color: #333;
   border-top: 1px solid #eee;
-  padding-top: 14px;
+  padding-top: 16px; /* Day 9：原 14px，统一节奏 */
 }
 
 /* ---------- 操作区：收藏按钮 + 原文链接 ---------- */
@@ -319,12 +322,28 @@ section h2 {
   cursor: pointer;
 }
 
-.fav-btn:hover { background: #fdf0ee; }
+.fav-btn:hover:not(:disabled) { background: #fdf0ee; } /* Day 9：禁用时不再给 hover 假反馈 */
 
 /* 已收藏（点亮态）：按钮状态变化，PRD F3 的可观察结果 */
 .fav-btn.active {
   background: #c0392b;
   color: #fff;
+}
+
+/* Day 9：禁用态（浏览器禁用本地存储时，main.js 会设 disabled）——
+   之前没有样式，按钮看着能点点了没反应，像「网站坏了」 */
+.fav-btn:disabled {
+  border-color: #d5d8dd;
+  color: #767676;
+  cursor: not-allowed;
+}
+
+/* Day 9：键盘焦点环——Tab 键走到按钮时能看清位置在哪 */
+.state-switch button:focus-visible,
+.retry-btn:focus-visible,
+.fav-btn:focus-visible {
+  outline: 2px solid #3366cc;
+  outline-offset: 2px;
 }
 
 .source-link {
@@ -346,7 +365,7 @@ section h2 {
   padding-top: 24px;
   padding-bottom: 32px;
   font-size: 12px;
-  color: #aaa;
+  color: #767676; /* Day 9：#aaa 对比度仅约 2.2:1，加深 */
   text-align: center;
 }
 
@@ -360,6 +379,12 @@ section h2 {
 @media (max-width: 480px) {
   .site-header h1 { font-size: 22px; }
   .detail-title { font-size: 18px; }
-  .hot-item { gap: 6px; }
-  .item-title { font-size: 14px; }
+  .hot-item { gap: 4px; } /* Day 9：原 6px，归队到 4/8 节奏 */
+
+  /* Day 9：触控目标——标题链接原本只有约 24px 高，
+     加上下内边距把可点高度抬到 44px 以上（拇指尺寸） */
+  .item-title {
+    font-size: 14px;
+    padding: 12px 0;
+  }
 }
