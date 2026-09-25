@@ -87,6 +87,13 @@ function buildStateBox(type) {
     btn.textContent = "重试";
     btn.addEventListener("click", function () {
       // 重试 = 回到成功态（真实项目里这里会重新发请求）
+      // Day 10 修复：重试只渲染列表还不够——
+      //   1) 状态开关高亮要同步跳回「正常」（否则界面正常了、高亮还停在「错误」）
+      //   2) 网址里的 ?state=error 要清掉（否则 F5 刷新会退回错误态，重试白做）
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+      syncStateSwitch("normal");
       renderHotListSuccess();
     });
     box.appendChild(btn);
