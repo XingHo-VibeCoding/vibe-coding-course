@@ -303,7 +303,7 @@ section h2 {
   padding-top: 16px; /* Day 9：原 14px，统一节奏 */
 }
 
-/* ---------- 操作区：收藏按钮 + 原文链接 ---------- */
+/* ---------- 操作区：收藏按钮 + 复制摘要（Day 11）+ 原文链接 ---------- */
 .detail-actions {
   display: flex;
   align-items: center;
@@ -338,10 +338,38 @@ section h2 {
   cursor: not-allowed;
 }
 
+/* ---------- Day 11：复制摘要按钮（反馈交互） ---------- */
+/* 视觉语言与 fav-btn 一致，用蓝色区分「这是另一个动作」 */
+.copy-btn {
+  font-size: 15px;
+  padding: 8px 20px;
+  border-radius: 6px;
+  border: 1px solid #3366cc;
+  background: #fff;
+  color: #3366cc;
+  cursor: pointer;
+}
+
+.copy-btn:hover { background: #eef4fc; }
+
+/* 成功反馈态：绿底白字「✓ 已复制」——点哪、哪变，因果一眼可见 */
+.copy-btn.done {
+  background: #2e7d32;
+  border-color: #2e7d32;
+  color: #fff;
+}
+
+/* 失败降级态：浅红提示，明确告知没复制上（file:// 打开时出现） */
+.copy-btn.fail {
+  border-color: #a32d2d;
+  color: #a32d2d;
+}
+
 /* Day 9：键盘焦点环——Tab 键走到按钮时能看清位置在哪 */
 .state-switch button:focus-visible,
 .retry-btn:focus-visible,
-.fav-btn:focus-visible {
+.fav-btn:focus-visible,
+.copy-btn:focus-visible {
   outline: 2px solid #3366cc;
   outline-offset: 2px;
 }

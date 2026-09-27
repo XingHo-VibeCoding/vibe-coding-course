@@ -326,6 +326,10 @@ function renderDetailPage() {
 
   favBtn.dataset.id = String(item.id);
 
+  // ---------- Day 11：复制摘要（反馈交互：即时·可见·可逆） ----------
+  // 放在「localStorage 不可用」的提前 return 之前——复制不依赖存储，禁用存储时也应可用
+  setupCopyButton(item);
+
   var favIds = getFavorites();
   var storageOk = favIds !== null;
 
@@ -367,6 +371,59 @@ function updateFavBtn(btn, isFav) {
     btn.textContent = "☆ 收藏";
     btn.classList.remove("active");
   }
+}
+
+// ---------- Day 11：复制摘要按钮 ----------
+
+// 复制「标题 + 摘要」到剪贴板，按钮变「✓ 已复制」2 秒后自动复原；
+// 连点时先清旧复原定时器再启新的（防抖），反馈永远以最后一次点击为准
+function setupCopyButton(item) {
+  var copyBtn = document.getElementById("copy-btn");
+  if (!copyBtn) return;
+
+  var resetTimer = null;
+
+  function showCopyFeedback(ok) {
+    // 防抖：连点时上一次的「2 秒后复原」作废
+    if (resetTimer !== null) {
+      window.clearTimeout(resetTimer);
+      resetTimer = null;
+    }
+
+    if (ok) {
+      copyBtn.textContent = "✓ 已复制";
+      copyBtn.classList.add("done");
+      copyBtn.classList.remove("fail");
+    } else {
+      // 失败降级（file:// 打开或权限被拒）：明确告知没复制上，页面不崩
+      copyBtn.textContent = "复制失败";
+      copyBtn.classList.add("fail");
+      copyBtn.classList.remove("done");
+    }
+
+    // 2 秒后复原（可逆）
+    resetTimer = window.setTimeout(function () {
+      copyBtn.textContent = "复制摘要";
+      copyBtn.classList.remove("done");
+      copyBtn.classList.remove("fail");
+      resetTimer = null;
+    }, 2000);
+  }
+
+  copyBtn.addEventListener("click", function () {
+    var text = item.title + "\n" + item.summary;
+
+    // clipboard 接口只在 localhost / https 下可用；不存在时走失败分支
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        showCopyFeedback(true);
+      }, function () {
+        showCopyFeedback(false);
+      });
+    } else {
+      showCopyFeedback(false);
+    }
+  });
 }
 
 // ---------- 入口：按页面分流 ----------
