@@ -91,6 +91,39 @@ main, .site-header, .site-footer {
   color: #fff;
 }
 
+/* ---------- 分类筛选（Day 12 · 甲方案）· 与状态开关同一套视觉语言 ---------- */
+.category-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0 16px; /* 模块内部 8 收口，与榜单区之间 16 */
+}
+
+.category-filter .switch-label {
+  font-size: 12px;
+  color: #666; /* 同状态开关：AA 达标灰 */
+}
+
+.category-filter button {
+  font-size: 12px;
+  padding: 3px 12px;
+  border-radius: 12px;
+  border: 1px solid #d5d8dd;
+  background: #fff;
+  color: #666;
+  cursor: pointer;
+}
+
+.category-filter button:hover { border-color: #3366cc; color: #3366cc; }
+
+/* 选中态：蓝底白字（3366cc on fff ≈ 5.4:1，AA 达标） */
+.category-filter button.active {
+  background: #3366cc;
+  border-color: #3366cc;
+  color: #fff;
+}
+
 /* ---------- 列表区（F1）· Day 8 三栏网格 ---------- */
 section h2 {
   font-size: 18px;
@@ -103,6 +136,18 @@ section h2 {
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   align-items: start;
+}
+
+/* Day 12：筛选态（只显示一个分类）——单栏铺满 + 居中，
+   不再缩在左边的三分之一格里。上限 720px 防止超宽屏拉太长难读 */
+#hot-list.single-cat {
+  grid-template-columns: 1fr;
+}
+
+#hot-list.single-cat .category-block {
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto; /* 居中 */
 }
 
 /* 分类块：main.js 每个分类生成一个 */
@@ -367,6 +412,7 @@ section h2 {
 
 /* Day 9：键盘焦点环——Tab 键走到按钮时能看清位置在哪 */
 .state-switch button:focus-visible,
+.category-filter button:focus-visible,
 .retry-btn:focus-visible,
 .fav-btn:focus-visible,
 .copy-btn:focus-visible {
@@ -414,5 +460,12 @@ section h2 {
   .item-title {
     font-size: 14px;
     padding: 12px 0;
+  }
+
+  /* Day 12：筛选按钮触控目标——min-height 直接锁 44px（拇指尺寸） */
+  .category-filter button {
+    min-height: 44px;
+    padding: 8px 16px;
+    border-radius: 22px;
   }
 }

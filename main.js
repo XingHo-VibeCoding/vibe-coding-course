@@ -9,6 +9,11 @@
 //   4) 错误态带「重试」按钮，点击回到成功态
 // Day 8 加练：单条卡片与列表的 DOM 生成抽到 components.js
 //   （createHotCard / createCardList），本文件只管「什么时候渲染什么」
+// Day 12 新增：
+//   1) 首页分类筛选：状态开关下方一行「全部/科技/娱乐/财经」标签，
+//      点击即筛，再点「全部」恢复；?cat=参数直达（含无结果态）
+//   2) 筛选状态与网址同步（Day 10 教训）：replaceState 增删 ?cat=，
+//      F5 刷新不丢筛选
 // 判断当前是哪个页面：看页面上有没有 #hot-list（首页的标志容器）
 // ============================================================
 
@@ -27,6 +32,80 @@ function getDemoState() {
   var params = new URLSearchParams(window.location.search);
   var s = params.get("state");
   return DEMO_STATES.indexOf(s) !== -1 ? s : "normal";
+}
+
+// ---------- Day 12：分类筛选（甲方案：全部/科技/娱乐/财经 标签行） ----------
+
+// 当前筛选的分类："all" = 全部（不过滤）
+var currentCategory = "all";
+
+// 可选分类 = 全部 + 数据里出现过的分类（保持首次出现顺序）
+function getCategoryOptions() {
+  var seen = [];
+  HOT_LIST.forEach(function (item) {
+    if (seen.indexOf(item.category) === -1) seen.push(item.category);
+  });
+  return ["all"].concat(seen);
+}
+
+// 从网址参数读初始筛选：?cat=科技。
+// 注意：不校验是否为已知分类——?cat=不存在的分类 会落到「筛选无结果」态，
+// 这正好是测试三种情况里的「无结果」入口（和 Day 8 的 ?state= 同一个思路）
+function getCategoryFromUrl() {
+  var params = new URLSearchParams(window.location.search);
+  var c = params.get("cat");
+  return c === null || c === "" ? "all" : c;
+}
+
+// 生成筛选按钮行（视觉与状态开关同一套语言）
+function setupCategoryFilter() {
+  var bar = document.getElementById("category-filter");
+  if (!bar) return;
+
+  var labels = { all: "全部" };
+
+  getCategoryOptions().forEach(function (name) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.dataset.cat = name;
+    btn.textContent = labels[name] || name;
+    if (name === currentCategory) btn.classList.add("active");
+    btn.addEventListener("click", function () {
+      if (currentCategory === name) return; // 重复点同一个分类，不重画
+      currentCategory = name;
+      syncCategoryFilter(name);
+      updateUrlCategory(name);
+      renderHotListSuccess();
+    });
+    bar.appendChild(btn);
+  });
+}
+
+// 同步筛选按钮高亮（网址带入的 cat 可能没有对应按钮，如 ?cat=体育）
+function syncCategoryFilter(cat) {
+  var bar = document.getElementById("category-filter");
+  if (!bar) return;
+  var buttons = bar.querySelectorAll("button");
+  for (var i = 0; i < buttons.length; i++) {
+    if (buttons[i].dataset.cat === cat) {
+      buttons[i].classList.add("active");
+    } else {
+      buttons[i].classList.remove("active");
+    }
+  }
+}
+
+// Day 10 教训：界面状态变了，网址参数要同步（否则 F5 刷新筛选就丢）
+function updateUrlCategory(cat) {
+  if (!(window.history && window.history.replaceState)) return;
+  var params = new URLSearchParams(window.location.search);
+  if (cat === "all") {
+    params.delete("cat");
+  } else {
+    params.set("cat", cat);
+  }
+  var qs = params.toString();
+  window.history.replaceState(null, "", window.location.pathname + (qs ? "?" + qs : ""));
 }
 
 // ---------- 收藏：localStorage 读写（F3，Day 7 原有） ----------
@@ -145,16 +224,34 @@ function syncStateSwitch(current) {
 
 // ---------- 首页逻辑（Day 8 状态机版） ----------
 
-// 成功态：渲染三栏分类列表（原 Day 7 逻辑，加序号）
+// 成功态：渲染分类列表（原 Day 7 逻辑，加序号；Day 12 加分类筛选）
 function renderHotListSuccess() {
   var listRoot = document.getElementById("hot-list");
   if (!listRoot) return;
   listRoot.innerHTML = "";
 
+  // Day 12：先按当前分类过滤（all = 不过滤）
+  var source = HOT_LIST;
+  if (currentCategory !== "all") {
+    source = HOT_LIST.filter(function (item) {
+      return item.category === currentCategory;
+    });
+  }
+
+  // Day 12（用户反馈）：只显示一个分类时给 #hot-list 挂 single-cat，
+  // CSS 里单栏铺满 + 居中，不再缩在左边三分之一格
+  if (listRoot.classList) {
+    if (currentCategory !== "all") {
+      listRoot.classList.add("single-cat");
+    } else {
+      listRoot.classList.remove("single-cat");
+    }
+  }
+
   // 按分类归堆（保持数据里首次出现的顺序）
   var order = [];
   var groups = {};
-  HOT_LIST.forEach(function (item) {
+  source.forEach(function (item) {
     if (!groups[item.category]) {
       groups[item.category] = [];
       order.push(item.category);
@@ -163,8 +260,19 @@ function renderHotListSuccess() {
   });
 
   if (order.length === 0) {
-    // 全列表为空 → 空态兜底，不白屏（PRD 第七节）
-    listRoot.appendChild(buildStateBox("empty"));
+    if (currentCategory !== "all") {
+      // Day 12：筛选无结果态（?cat=不存在的分类直达）
+      // 按钮行在 #hot-list 外面，仍然可见可点——「点全部恢复」的路不能断
+      var box = document.createElement("div");
+      box.className = "state-box empty-box";
+      var tip = document.createElement("p");
+      tip.textContent = "「" + currentCategory + "」分类下暂时没有内容，点上方「全部」恢复。";
+      box.appendChild(tip);
+      listRoot.appendChild(box);
+    } else {
+      // 全列表为空 → 空态兜底，不白屏（PRD 第七节）
+      listRoot.appendChild(buildStateBox("empty"));
+    }
     return;
   }
 
@@ -201,6 +309,10 @@ function renderIndexPage() {
   if (!listRoot) return;
 
   setupStateSwitch();
+
+  // Day 12：筛选栏 + 从网址读初始分类（?cat=科技）
+  currentCategory = getCategoryFromUrl();
+  setupCategoryFilter();
 
   var demo = getDemoState();
   syncStateSwitch(demo);
