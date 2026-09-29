@@ -59,6 +59,56 @@ main, .site-header, .site-footer {
 
 .back-link:hover { text-decoration: underline; }
 
+/* ---------- Day 13：收藏入口 + 面包屑 + 收藏页列表 ---------- */
+
+/* 首页顶部「我的收藏」入口：与站名同一视觉层级，蓝色链接 */
+.fav-entry {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 14px;
+  color: #3366cc;
+  text-decoration: none;
+}
+
+.fav-entry:hover { text-decoration: underline; }
+
+/* 详情页操作区「查看收藏」链接：与 source-link 同语言 */
+.fav-view-link {
+  font-size: 15px;
+  color: #3366cc;
+  text-decoration: none;
+}
+
+.fav-view-link:hover { text-decoration: underline; }
+
+/* 面包屑（收藏页）：首页 > 我的收藏 */
+.breadcrumb {
+  margin: 8px 0 16px;
+  font-size: 13px;
+  color: #767676; /* AA 达标浅灰 */
+}
+
+.breadcrumb a {
+  color: #3366cc;
+  text-decoration: none;
+}
+
+.breadcrumb a:hover { text-decoration: underline; }
+
+.breadcrumb span[aria-hidden] { margin: 0 4px; }
+
+.breadcrumb [aria-current="page"] { color: #666; }
+
+/* 收藏页列表：单列纵排（收藏量少，不需要三栏）；
+   hot-list 已有基础样式，这里只补充卡片化 */
+.favorites-view-list .hot-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 16px;
+  margin-bottom: 8px;
+  background: #fff;
+}
+
 /* ---------- 状态演示开关（Day 8，演示辅助，非产品功能） ---------- */
 .state-switch {
   display: flex;

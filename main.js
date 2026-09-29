@@ -299,10 +299,10 @@ function renderHotListSuccess() {
 
     listRoot.appendChild(block);
   });
-
-  // 渲染「我的收藏」区（成功态才有意义）
-  renderFavoritesArea();
 }
+
+// Day 13：原首页内嵌「我的收藏」区块已迁到独立 favorites.html，
+// 旧渲染函数整个删掉（HTML 挂载点也没了，留着是死代码）。
 
 function renderIndexPage() {
   var listRoot = document.getElementById("hot-list");
@@ -347,34 +347,86 @@ function renderIndexPage() {
   }, FAKE_DELAY);
 }
 
-function renderFavoritesArea() {
-  var area = document.getElementById("favorites-area");
-  var ul = document.getElementById("favorites-list");
-  var emptyTip = document.getElementById("favorites-empty-tip");
-  if (!area || !ul || !emptyTip) return;
+// Day 13：原首页内嵌「我的收藏」区块已迁到独立 favorites.html，
+// 这个旧渲染函数整个删掉（HTML 挂载点也没了，留着是死代码）。
+
+// ---------- Day 13：收藏页逻辑（favorites.html · 独立视图） ----------
+
+// 收藏页状态：支持 ?favstate= 直达（与首页 ?state= 同思路，演示辅助）
+//   normal（默认）→ 加载中一小会儿 → 有收藏=正常 / 无收藏=空
+//   error → 直接显示错误盒子（模拟 localStorage 读不了）
+var FAV_DEMO_STATES = ["normal", "error"];
+
+function getFavDemoState() {
+  var params = new URLSearchParams(window.location.search);
+  var s = params.get("favstate");
+  return FAV_DEMO_STATES.indexOf(s) !== -1 ? s : "normal";
+}
+
+function renderFavoritesPage() {
+  var root = document.getElementById("fav-list-root");
+  if (!root) return;
+
+  var demo = getFavDemoState();
+
+  if (demo === "error") {
+    // 错误态：本地存储不可用（真实触发法：浏览器隐私模式/禁存储；演示用 ?favstate=error 直达）
+    root.innerHTML = "";
+    var box = document.createElement("div");
+    box.className = "state-box error-box";
+    var msg = document.createElement("p");
+    msg.textContent = "收藏读取失败——浏览器可能禁用了本地存储。";
+    box.appendChild(msg);
+    var back = document.createElement("a");
+    back.className = "source-link";
+    back.href = "index.html";
+    back.textContent = "← 返回首页";
+    box.appendChild(back);
+    root.appendChild(box);
+    return;
+  }
+
+  // normal：先加载中 → 模拟延迟后按收藏情况渲染（空 / 正常）
+  root.innerHTML = "";
 
   var favIds = getFavorites();
   if (favIds === null) {
-    area.classList.add("hidden");
+    // 真错误（不是演示）：存储真的不可用
+    window.location.replace("favorites.html?favstate=error");
     return;
   }
 
-  var favItems = HOT_LIST.filter(function (item) {
-    return favIds.indexOf(item.id) !== -1;
-  });
+  root.appendChild(buildStateBox("loading"));
 
-  if (favItems.length === 0) {
-    area.classList.remove("hidden");
-    ul.innerHTML = "";
-    emptyTip.classList.remove("hidden");
-    return;
-  }
+  window.setTimeout(function () {
+    root.innerHTML = "";
 
-  area.classList.remove("hidden");
-  emptyTip.classList.add("hidden");
-  ul.innerHTML = "";
-  // 收藏区条目不带排名：同一个 HotCard 组件，不传 rank 即可
-  favItems.forEach(function (item) { ul.appendChild(createHotCard(item)); });
+    var favItems = HOT_LIST.filter(function (item) {
+      return favIds.indexOf(item.id) !== -1;
+    });
+
+    if (favItems.length === 0) {
+      // 空态：没收藏，引导去首页
+      var emptyBox = document.createElement("div");
+      emptyBox.className = "state-box empty-box";
+      var tip = document.createElement("p");
+      tip.textContent = "还没有收藏。点开任意一条热搜，在详情页点「收藏」试试。";
+      emptyBox.appendChild(tip);
+      var goIndex = document.createElement("a");
+      goIndex.className = "source-link";
+      goIndex.href = "index.html";
+      goIndex.textContent = "← 去首页逛热搜";
+      emptyBox.appendChild(goIndex);
+      root.appendChild(emptyBox);
+      return;
+    }
+
+    // 正常态：收藏条目（不带排名，与原首页内嵌版一致）
+    var ul = document.createElement("ul");
+    ul.className = "hot-list favorites-view-list";
+    favItems.forEach(function (item) { ul.appendChild(createHotCard(item)); });
+    root.appendChild(ul);
+  }, FAKE_DELAY);
 }
 
 // ---------- 详情页逻辑（F2，Day 8 不改） ----------
@@ -545,5 +597,8 @@ function setupCopyButton(item) {
     renderIndexPage();
   } else if (document.getElementById("detail-card")) {
     renderDetailPage();
+  } else if (document.getElementById("fav-list-root")) {
+    // Day 13：收藏页（favorites.html）
+    renderFavoritesPage();
   }
 })();

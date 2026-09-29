@@ -11,10 +11,11 @@
 </head>
 <body>
 
-  <!-- 顶部：网站名 + 数据更新时间（PRD F1 要求） -->
+  <!-- 顶部：网站名 + 数据更新时间（PRD F1 要求）+ 我的收藏入口（Day 13） -->
   <header class="site-header">
     <h1>今日热搜</h1>
     <p class="update-time">演示数据 · 更新于 2026-09-24</p>
+    <a class="fav-entry" href="favorites.html">★ 我的收藏</a>
   </header>
 
   <main>
@@ -28,14 +29,8 @@
       <span class="switch-label">分类筛选：</span>
     </div>
 
-    <!-- 我的收藏（F3）：默认隐藏，main.js 检测到收藏后显示并填充 -->
-    <section id="favorites-area" class="favorites-area hidden" aria-label="我的收藏">
-      <h2>我的收藏</h2>
-      <ul id="favorites-list" class="hot-list"></ul>
-      <p id="favorites-empty-tip" class="empty-tip hidden">还没有收藏，点开任意一条热搜，在详情页点「收藏」试试。</p>
-    </section>
-
     <!-- 今日榜单（F1）：main.js 按状态机渲染（加载中 → 成功三栏 / 空 / 错误） -->
+    <!-- Day 13：原「我的收藏」区块迁到独立 favorites.html，首页不再内嵌 -->
     <section id="hot-list-area" aria-label="今日榜单">
       <h2>今日榜单</h2>
       <div id="hot-list">
