@@ -577,17 +577,49 @@ function setupCopyButton(item) {
   copyBtn.addEventListener("click", function () {
     var text = item.title + "\n" + item.summary;
 
-    // clipboard 接口只在 localhost / https 下可用；不存在时走失败分支
+    // clipboard 接口只在安全上下文（localhost / https）可用；
+    // 局域网 IP（http://10.x.x.x 之类）不是安全上下文，接口不存在或被拒——
+    // 此时降级到老方法 copyTextLegacy()，两条路都失败才算真失败（Day 14 修复）
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(function () {
         showCopyFeedback(true);
       }, function () {
-        showCopyFeedback(false);
+        // 新接口存在但被拒（权限/非安全上下文）→ 试老方法
+        showCopyFeedback(copyTextLegacy(text));
       });
     } else {
-      showCopyFeedback(false);
+      // 新接口整个不存在（局域网/老浏览器）→ 直接走老方法
+      showCopyFeedback(copyTextLegacy(text));
     }
   });
+}
+
+// Day 14：老复制方法降级——藏一个临时 textarea，塞入文字、选中、执行复制、删掉。
+// navigator.clipboard 不可用的环境（局域网 http://IP、file:// 等）靠它兜底。
+function copyTextLegacy(text) {
+  var ta = document.createElement("textarea");
+  // 移出屏幕外，避免页面闪动；只读防止手机键盘弹出
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "fixed";
+  ta.style.top = "-9999px";
+  ta.style.left = "-9999px";
+  document.body.appendChild(ta);
+
+  // 选中文字（两套写法都调，兼容各浏览器）
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+
+  var ok = false;
+  try {
+    // execCommand 已被标记过时，但所有浏览器仍支持，且是非安全上下文唯一可用的复制手段
+    ok = document.execCommand("copy");
+  } catch (e) {
+    ok = false;
+  }
+
+  document.body.removeChild(ta);
+  return ok;
 }
 
 // ---------- 入口：按页面分流 ----------
