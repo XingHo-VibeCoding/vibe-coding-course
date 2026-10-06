@@ -62,10 +62,86 @@
 
 ## 业务接口（Day 16–20 追加）
 
-暂无。计划中：热搜列表、详情、收藏等，届时逐个补全「路径 / 入参 / 返回 / 错误码」。
+### GET /api/hot（Day 17 上线）
+
+热搜列表——优先返回当日真实热搜，无真实数据时回退示例数据。
+
+- **用途**：首页/列表页数据源
+- **入参**：无
+- **行为**：
+  1. 查 `trends` 表**北京时间当天**的数据，按热度倒序取**前 20 条**
+  2. 当天无真实数据（同步未跑/全失败）→ 回退 `hot_items` 示例数据，按热度倒序返回全部
+- **返回**（200）：
+
+  ```json
+  {
+    "code": 0,
+    "message": "ok",
+    "data": {
+      "list": [ { "id": 1, "title": "...", "heat": 9876543, "...": "..." } ]
+    }
+  }
+  ```
+
+- **字段说明**（两个分支字段不同，前端对接时需统一——已知遗留项，见变更记录）：
+
+  | 分支 | 字段 | 说明 |
+  |---|---|---|
+  | trends（真实数据） | `platform / title / hot / rank / date / fetched_at` | 数据库原始行 |
+  | hot_items（回退） | `id / title / summary / category / heat / source / link` | 已映射成前端字段（库里 `url` → 接口 `link`） |
+
+- **错误**（500）：`code:1`，message 带具体数据库错误说明
+- **已知限制**：三平台热度量纲不可比（抖音 1200 万级 vs 微博 100 万级），纯热度排序会让单平台霸榜——前端分组展示时再议
+- **验证方式**：浏览器直开；改库后重请求看返回变化
+
+### GET /api/favorites（Day 17 上线）
+
+收藏列表——返回 demo 用户收藏的热搜。
+
+- **用途**：收藏页数据源
+- **入参**：无
+- **行为**：查 `favorites`（`user_id='demo'`）+ `hot_items`，代码里按 `item_id = hot_items.id` 关联，按热度倒序
+- **返回**（200）：`data.list` 为条目数组，字段同 /api/hot 的 hot_items 分支（`id/title/summary/category/heat/source/link`）
+- **错误**（500）：同上
+- **验证方式**：浏览器直开；改 hot_items 热度后收藏内排序跟着变
+
+### POST /api/sync（Day 17 上线，GET 亦可触发）
+
+数据同步——从微博/B站/抖音抓取当日热搜写入 `trends` 表。
+
+- **用途**：手动/定时刷新真实数据（当前仅手动触发）
+- **入参**：无
+- **行为**：
+  1. 三平台**并行**抓取，每平台取**前 30 条**（来源与请求头按附录 F：微博 `data.realtime[].word/num`、B站 `data.trending.list[].keyword/heat_score`、抖音 `data.word_list[].word/hot_value`；均带正常浏览器 UA/Referer，不绕过反爬）
+  2. 按 `UNIQUE(platform,title,date)` upsert 写入——重复同步就地更新，**幂等**
+  3. 单平台失败不影响其他平台；**三平台全失败**才返回失败（前端拿不到新数据会继续走 /api/hot 的 hot_items 回退）
+- **返回**（200，成功）：
+
+  ```json
+  {
+    "code": 0,
+    "message": "ok",
+    "data": {
+      "date": "2026-10-06",
+      "results": [
+        { "platform": "weibo", "ok": true, "count": 30 },
+        { "platform": "bilibili", "ok": true, "count": 30 },
+        { "platform": "douyin", "ok": true, "count": 30 }
+      ]
+    }
+  }
+  ```
+
+- **返回**（200，全失败）：`code:1`，message 含各平台失败原因
+- **手动触发**：浏览器直开（GET）或程序 POST
+- **验证方式**：连打两遍，第二遍仍全 ok 且数据量不涨 = 幂等成立
+
 
 ## 变更记录
 
 | 日期 | 变更 | 操作人 |
 |---|---|---|
 | 2026-10-05 | 初版：通用约定 + /api/health | Day 15 |
+| 2026-10-06 | 新增 GET /api/hot：trends 当日真实数据（热度倒序前 20 条），回退 hot_items 示例数据 | Day 17 |
+| 2026-10-06 | 新增 GET /api/favorites：demo 用户收藏列表（热度倒序） | Day 17 |
+| 2026-10-06 | 新增 POST /api/sync：三平台并行抓取各前 30 条，UNIQUE upsert 幂等写入 trends | Day 17 |
