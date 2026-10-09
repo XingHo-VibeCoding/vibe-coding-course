@@ -14,6 +14,10 @@
 //      点击即筛，再点「全部」恢复；?cat=参数直达（含无结果态）
 //   2) 筛选状态与网址同步（Day 10 教训）：replaceState 增删 ?cat=，
 //      F5 刷新不丢筛选
+// Day 20 新增：数据源从 data.js 的 HOT_LIST 切换到公网接口 /api/hot
+//   1) API_BASE 写死（甲拍板），fetchAndRenderHotList 拉数据 + 错误状态栏
+//   2) 收藏页保留 localStorage id 列表，渲染时按 id 过滤运行时拉的列表
+//   3) 详情页（renderDetailPage）今日不做，仍读 HOT_LIST 演示数据
 // 判断当前是哪个页面：看页面上有没有 #hot-list（首页的标志容器）
 // ============================================================
 
@@ -42,7 +46,9 @@ var currentCategory = "all";
 // 可选分类 = 全部 + 数据里出现过的分类（保持首次出现顺序）
 function getCategoryOptions() {
   var seen = [];
-  HOT_LIST.forEach(function (item) {
+  // Day 20：优先用运行时拉到的列表；离线/失败兜底用 data.js 演示
+  var source = HOT_LIST_RUNTIME || HOT_LIST;
+  source.forEach(function (item) {
     if (seen.indexOf(item.category) === -1) seen.push(item.category);
   });
   return ["all"].concat(seen);
@@ -133,6 +139,56 @@ function saveFavorites(list) {
   } catch (e) {
     return false;
   }
+}
+
+// ---------- Day 20：真实数据源（替换 data.js 演示数据） ----------
+
+// 公网接口 base URL（甲拍板：写死，将来换环境只改这一行）
+var API_BASE = "https://hot-search-d0gsdawf8daa02466-1500761802.ap-shanghai.app.tcloudbase.com";
+
+// 运行时拉到的热搜列表（首页/收藏页共用）；null = 还没拉或拉失败
+var HOT_LIST_RUNTIME = null;
+
+// 请求 /api/hot，返回规范化的数组（字段对齐前端 createHotCard 期望）
+// 失败抛 Error，message 带 HTTP 状态或接口 message，方便错误状态栏展示
+function fetchHotList() {
+  return fetch(API_BASE + "/api/hot").then(function (res) {
+    return res.json().catch(function () { return null; }).then(function (json) {
+      if (!res.ok || !json || json.code !== 0) {
+        var msg = (json && json.message) || ("HTTP " + res.status);
+        throw new Error(msg);
+      }
+      // 接口两种形状都兼容：
+      //   trends 分支（当日有同步）→ data: { list: [...] }
+      //   hot_items 回退分支（当日没同步）→ data: [...] 或 data: { list: [...] }
+      var payload = json.data;
+      var rows = Array.isArray(payload) ? payload : (payload && payload.list) || [];
+      return rows.map(normalizeItem);
+    });
+  });
+}
+
+// 平台英文标识 → 中文展示名（trends 分支没有 source/category，用平台名顶上）
+var PLATFORM_NAMES = { weibo: "微博", bilibili: "B站", douyin: "抖音" };
+
+// 接口 item 字段对齐 data.js HOT_LIST：id/title/summary/link/heat/category/source/rank
+// 两分支字段名不同，这里统一抹平：
+//   hot_items 回退分支：title/summary/url→link/heat/category/source/rank（全字段）
+//   trends 分支：title/hot（无 summary/category/link/source）——
+//     heat ← hot；category/source ← 平台中文名；link/summary 留空（Day 21+ 再议）
+function normalizeItem(it) {
+  var platform = it.platform || "";
+  var platformName = PLATFORM_NAMES[platform] || platform;
+  return {
+    id: Number(it.id),
+    title: it.title || "",
+    summary: it.summary || "",
+    link: it.link || it.url || "",
+    heat: it.heat != null ? Number(it.heat) : (Number(it.hot) || 0),
+    category: it.category || platformName || "其他",
+    source: it.source || platformName,
+    rank: it.rank == null ? null : Number(it.rank)
+  };
 }
 
 // ---------- Day 8：四态盒子工厂（三种非成功态共用一套做法） ----------
@@ -230,10 +286,10 @@ function renderHotListSuccess() {
   if (!listRoot) return;
   listRoot.innerHTML = "";
 
-  // Day 12：先按当前分类过滤（all = 不过滤）
-  var source = HOT_LIST;
+  // Day 12：先按当前分类过滤（all = 不过滤）；Day 20：优先用运行时拉的列表
+  var source = HOT_LIST_RUNTIME || HOT_LIST;
   if (currentCategory !== "all") {
-    source = HOT_LIST.filter(function (item) {
+    source = source.filter(function (item) {
       return item.category === currentCategory;
     });
   }
@@ -338,13 +394,49 @@ function renderIndexPage() {
     return;
   }
 
-  // normal：先加载中 → 模拟延迟后渲染成功（真实项目里延迟=等服务器返回）
+  // normal：先加载中 → 请求公网接口 → 成功渲染 / 失败显示错误状态栏 + 重试
+  fetchAndRenderHotList(listRoot);
+}
+
+// Day 20：拉数据 + 渲染；错误时显示具体错误信息（用户拍板甲：错误状态栏）
+function fetchAndRenderHotList(listRoot) {
   listRoot.innerHTML = "";
   listRoot.appendChild(buildStateBox("loading"));
-
-  window.setTimeout(function () {
+  fetchHotList().then(function (list) {
+    HOT_LIST_RUNTIME = list;
     renderHotListSuccess();
-  }, FAKE_DELAY);
+  }).catch(function (e) {
+    listRoot.innerHTML = "";
+    listRoot.appendChild(buildHotErrorBox(e.message || "网络错误", listRoot));
+  });
+}
+
+// Day 20：错误状态栏——顶部红字带具体原因 + 重试按钮（不复建状态开关/筛选栏）
+function buildHotErrorBox(reason, listRoot) {
+  var box = document.createElement("div");
+  box.className = "state-box error-box";
+  var banner = document.createElement("p");
+  banner.className = "error-banner";
+  banner.textContent = "⚠ 接口请求失败：" + reason;
+  box.appendChild(banner);
+  var hint = document.createElement("p");
+  hint.className = "empty-tip";
+  hint.textContent = "请检查网络后点「重试」再次请求。";
+  box.appendChild(hint);
+  var btn = document.createElement("button");
+  btn.className = "retry-btn";
+  btn.type = "button";
+  btn.textContent = "重试";
+  btn.addEventListener("click", function () {
+    // 清掉 ?state= 演示参数 + 开关高亮跳回正常，避免重试白做（Day 10 同款教训）
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+    syncStateSwitch("normal");
+    fetchAndRenderHotList(listRoot);
+  });
+  box.appendChild(btn);
+  return box;
 }
 
 // Day 13：原首页内嵌「我的收藏」区块已迁到独立 favorites.html，
@@ -386,22 +478,27 @@ function renderFavoritesPage() {
     return;
   }
 
-  // normal：先加载中 → 模拟延迟后按收藏情况渲染（空 / 正常）
-  root.innerHTML = "";
-
+  // normal：先加载中 → 拉热搜列表（接口）→ 按 localStorage 收藏 id 过滤渲染
+  // Day 20：详情页/收藏按钮接 POST 今日不做，所以收藏 id 仍来自 localStorage；
+  //         显示的条目数据从 /api/hot 拉（替代 HOT_LIST 演示数据）
   var favIds = getFavorites();
   if (favIds === null) {
     // 真错误（不是演示）：存储真的不可用
     window.location.replace("favorites.html?favstate=error");
     return;
   }
+  fetchAndRenderFavorites(root, favIds);
+}
 
+// Day 20：收藏页拉数据 + 渲染；错误时显示具体错误信息
+function fetchAndRenderFavorites(root, favIds) {
+  root.innerHTML = "";
   root.appendChild(buildStateBox("loading"));
-
-  window.setTimeout(function () {
+  fetchHotList().then(function (list) {
+    HOT_LIST_RUNTIME = list;
     root.innerHTML = "";
 
-    var favItems = HOT_LIST.filter(function (item) {
+    var favItems = list.filter(function (item) {
       return favIds.indexOf(item.id) !== -1;
     });
 
@@ -426,7 +523,36 @@ function renderFavoritesPage() {
     ul.className = "hot-list favorites-view-list";
     favItems.forEach(function (item) { ul.appendChild(createHotCard(item)); });
     root.appendChild(ul);
-  }, FAKE_DELAY);
+  }).catch(function (e) {
+    root.innerHTML = "";
+    root.appendChild(buildFavErrorBox(e.message || "网络错误", root, favIds));
+  });
+}
+
+// Day 20：收藏页错误状态栏
+function buildFavErrorBox(reason, root, favIds) {
+  var box = document.createElement("div");
+  box.className = "state-box error-box";
+  var banner = document.createElement("p");
+  banner.className = "error-banner";
+  banner.textContent = "⚠ 收藏接口请求失败：" + reason;
+  box.appendChild(banner);
+  var hint = document.createElement("p");
+  hint.className = "empty-tip";
+  hint.textContent = "请检查网络后点「重试」再次请求。";
+  box.appendChild(hint);
+  var btn = document.createElement("button");
+  btn.className = "retry-btn";
+  btn.type = "button";
+  btn.textContent = "重试";
+  btn.addEventListener("click", function () {
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+    fetchAndRenderFavorites(root, favIds);
+  });
+  box.appendChild(btn);
+  return box;
 }
 
 // ---------- 详情页逻辑（F2，Day 8 不改） ----------

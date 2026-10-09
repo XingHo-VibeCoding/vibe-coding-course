@@ -311,6 +311,12 @@ section h2 {
 /* 3) 错误：红字提示 + 重试按钮 */
 .error-box { color: #a32d2d; font-size: 14px; }
 
+/* Day 20：错误状态栏首行——加粗带具体失败原因 */
+.error-banner {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
 .retry-btn {
   display: inline-block;
   margin-top: 16px; /* Day 9：原 12px，统一节奏 */
